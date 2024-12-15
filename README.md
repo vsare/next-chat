@@ -23,6 +23,6 @@ NeatChat是NextChat的去广告版本，使用NextChat的UI，并移除了广告
 1. [演示站](https://neat.tz889.us.kg)
 2. docker只需要替换官方**yidadaa/chatgpt-next-web:版本号**为**tianzhentech/chatgpt-next-web:latest**即可
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=tianzhentech/ChatGPT-Next-Web&type=Date)](https://star-history.com/#tianzhentech/ChatGPT-Next-Web&Date)
+## Comment
+这个仓库 fork 自 https://github.com/tianzhentech/ChatGPT-Next-Web
+由于我不想再在vercek重新删除并部署项目了，随后会尽力看在vercel部署。
