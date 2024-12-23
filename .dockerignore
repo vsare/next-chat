@@ -95,3 +95,5 @@ Thumbs.db
 # secret key
 *.key
 *.key.pub
+
+build.sh

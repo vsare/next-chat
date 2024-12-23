@@ -5,8 +5,6 @@ import { RequestMessage } from "./client/api";
 import { ServiceProvider } from "./constant";
 // import { fetch as tauriFetch, ResponseType } from "@tauri-apps/api/http";
 import { fetch as tauriStreamFetch } from "./utils/stream";
-import { VISION_MODEL_REGEXES, EXCLUDE_VISION_MODEL_REGEXES } from "./constant";
-import { getClientConfig } from "./config/client";
 
 export function trimTopic(topic: string) {
   // Fix an issue where double quotes still show in the Indonesian language
@@ -254,16 +252,30 @@ export function getMessageImages(message: RequestMessage): string[] {
 }
 
 export function isVisionModel(model: string) {
-  const clientConfig = getClientConfig();
-  const envVisionModels = clientConfig?.visionModels
-    ?.split(",")
-    .map((m) => m.trim());
-  if (envVisionModels?.includes(model)) {
-    return true;
-  }
+  const modelLower = model.toLowerCase();
+  const excludeKeywords = ["claude-3-5-haiku-20241022"];
+  const visionKeywords = [
+    "vision",
+    "gpt-4o",
+    "claude-3",
+    "gemini-1.5",
+    "gemini-exp",
+    "gemini-2.0-flash-exp",
+    "learnlm",
+    "vl",
+  ];
+  const isGpt4Turbo =
+    modelLower.includes("gpt-4-turbo") && !modelLower.includes("preview");
+
   return (
-    !EXCLUDE_VISION_MODEL_REGEXES.some((regex) => regex.test(model)) &&
-    VISION_MODEL_REGEXES.some((regex) => regex.test(model))
+    !excludeKeywords.some((keyword) =>
+      modelLower.includes(keyword.toLowerCase()),
+    ) &&
+    (visionKeywords.some((keyword) =>
+      modelLower.includes(keyword.toLowerCase()),
+    ) ||
+      isGpt4Turbo ||
+      isDalle3(modelLower))
   );
 }
 
