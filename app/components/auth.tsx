@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Path } from "../constant";
 import { useAccessStore } from "../store";
 import Locale from "../locales";
-import BotIcon from "../icons/bot.svg";
+import NeatIcon from "../icons/neat.svg";
 import { getClientConfig } from "../config/client";
 import { PasswordInput } from "./ui-lib";
 import LeftIcon from "@/app/icons/left.svg";
@@ -40,7 +40,7 @@ export function AuthPage() {
         ></IconButton>
       </div>
       <div className={clsx("no-dark", styles["auth-logo"])}>
-        <BotIcon />
+        <NeatIcon width={30} height={30} />
       </div>
 
       <div className={styles["auth-title"]}>{Locale.Auth.Title}</div>

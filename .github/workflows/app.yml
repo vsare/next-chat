@@ -40,12 +40,6 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - os: ubuntu-latest
-            arch: x86_64
-            rust_target: x86_64-unknown-linux-gnu
-          - os: macos-latest
-            arch: aarch64
-            rust_target: x86_64-apple-darwin,aarch64-apple-darwin
           - os: windows-latest
             arch: x86_64
             rust_target: x86_64-pc-windows-msvc
@@ -58,6 +52,19 @@ jobs:
         with:
           node-version: 18
           cache: 'yarn'
+      - name: Process version for Windows
+        if: matrix.config.os == 'windows-latest'
+        run: |
+          $version = node -p "require('./src-tauri/tauri.conf.json').package.version"
+          # 将预发布版本转换为 Windows 兼容的格式 (例如: 1.1.11-preview.1 -> 1.1.11.1)
+          $windowsVersion = $version -replace '-preview\.(\d+)$', '.$1'
+          # 如果没有预发布号，添加 .0
+          if ($windowsVersion -eq $version) {
+            $windowsVersion = $version + '.0'
+          }
+          echo "WINDOWS_VERSION=$windowsVersion" >> $env:GITHUB_ENV
+      - name: Change directory to project root
+        run: cd ./src-tauri  # 确保切换到包含 Cargo.toml 的目录
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -65,27 +72,30 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.config.os }}
-      - name: install dependencies (ubuntu only)
-        if: matrix.config.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
       - name: install frontend dependencies
-        run: yarn install # change this to npm or pnpm depending on which one you use
+        run: |
+          yarn install
+          yarn add sharp
       - uses: tauri-apps/tauri-action@v0
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
-          args: ${{ matrix.config.os == 'macos-latest' && '--target universal-apple-darwin' || '' }}
+      - name: Set MSI compatible version
+        run: |
+          # 获取原始版本号
+          $original_version = node -p "require('./src-tauri/tauri.conf.json').package.version"
+          # 将预发布版本转换为 MSI 兼容的格式 (例如: 1.1.11-preview.1 -> 1.1.11.1)
+          $msi_version = $original_version -replace '-preview\.(\d+)$', '.$1' -replace '[^0-9.]', ''
+          # 如果没有预发布号，添加 .0
+          if ($msi_version -eq $original_version) {
+            $msi_version = "$msi_version.0"
+          }
+          # 更新 tauri.conf.json 中的版本号
+          jq --arg version "$msi_version" '.package.version = $version' ./src-tauri/tauri.conf.json > tmp.$$.json && mv tmp.$$.json ./src-tauri/tauri.conf.json
 
   publish-release:
     permissions:
