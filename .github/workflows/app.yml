@@ -52,19 +52,6 @@ jobs:
         with:
           node-version: 18
           cache: 'yarn'
-      - name: Process version for Windows
-        if: matrix.config.os == 'windows-latest'
-        run: |
-          $version = node -p "require('./src-tauri/tauri.conf.json').package.version"
-          # 将预发布版本转换为 Windows 兼容的格式 (例如: 1.1.11-preview.1 -> 1.1.11.1)
-          $windowsVersion = $version -replace '-preview\.(\d+)$', '.$1'
-          # 如果没有预发布号，添加 .0
-          if ($windowsVersion -eq $version) {
-            $windowsVersion = $version + '.0'
-          }
-          echo "WINDOWS_VERSION=$windowsVersion" >> $env:GITHUB_ENV
-      - name: Change directory to project root
-        run: cd ./src-tauri  # 确保切换到包含 Cargo.toml 的目录
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -84,18 +71,6 @@ jobs:
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
-      - name: Set MSI compatible version
-        run: |
-          # 获取原始版本号
-          $original_version = node -p "require('./src-tauri/tauri.conf.json').package.version"
-          # 将预发布版本转换为 MSI 兼容的格式 (例如: 1.1.11-preview.1 -> 1.1.11.1)
-          $msi_version = $original_version -replace '-preview\.(\d+)$', '.$1' -replace '[^0-9.]', ''
-          # 如果没有预发布号，添加 .0
-          if ($msi_version -eq $original_version) {
-            $msi_version = "$msi_version.0"
-          }
-          # 更新 tauri.conf.json 中的版本号
-          jq --arg version "$msi_version" '.package.version = $version' ./src-tauri/tauri.conf.json > tmp.$$.json && mv tmp.$$.json ./src-tauri/tauri.conf.json
 
   publish-release:
     permissions:

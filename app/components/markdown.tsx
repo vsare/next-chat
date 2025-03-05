@@ -26,7 +26,7 @@ import { IconButton } from "./button";
 import { useAppConfig } from "../store/config";
 
 function Details(props: { children: React.ReactNode }) {
-  return <details>{props.children}</details>;
+  return <details open>{props.children}</details>;
 }
 function Summary(props: { children: React.ReactNode }) {
   return <summary>{props.children}</summary>;
@@ -276,11 +276,46 @@ function tryWrapHtmlCode(text: string) {
     );
 }
 
+function formatThinkText(text: string): string {
+  // 检查是否以 <think> 开头但没有结束标签
+  if (text.startsWith("<think>") && !text.includes("</think>")) {
+    // 获取 <think> 后的所有内容
+    const thinkContent = text.slice("<think>".length);
+    // 给每一行添加引用符号
+    const quotedContent = thinkContent
+      .split("\n")
+      .map((line: string) => (line.trim() ? `> ${line}` : ">"))
+      .join("\n");
+
+    return `<details open>
+<summary>${Locale.NewChat.Thinking} <span class="thinking-loader"></span></summary>
+
+${quotedContent}
+
+</details>`;
+  }
+
+  // 处理完整的 think 标签
+  const pattern = /^<think>([\s\S]*?)<\/think>/;
+  return text.replace(pattern, (match, thinkContent) => {
+    // 给每一行添加引用符号
+    const quotedContent = thinkContent
+      .split("\n")
+      .map((line: string) => (line.trim() ? `> ${line}` : ">"))
+      .join("\n");
+
+    return `<details open>
+<summary>${Locale.NewChat.Think}</summary>
+
+${quotedContent}
+
+</details>`;
+  });
+}
+
 function _MarkDownContent(props: { content: string }) {
   const escapedContent = useMemo(() => {
-    return tryWrapHtmlCode(
-      formatThinkText(escapeBrackets(props.content))
-    );
+    return tryWrapHtmlCode(formatThinkText(escapeBrackets(props.content)));
   }, [props.content]);
 
   return (
@@ -343,6 +378,45 @@ export function Markdown(
   } & React.DOMAttributes<HTMLDivElement>,
 ) {
   const mdRef = useRef<HTMLDivElement>(null);
+  const [autoScroll, setAutoScroll] = useState(true);
+  const lastContentRef = useRef(props.content);
+  const lastScrollTopRef = useRef(0);
+
+  // 检测是否滚动到底部
+  const checkIfAtBottom = (target: HTMLDivElement) => {
+    const threshold = 20;
+    const bottomPosition =
+      target.scrollHeight - target.scrollTop - target.clientHeight;
+    return bottomPosition <= threshold;
+  };
+
+  // 处理滚动事件
+  useEffect(() => {
+    const parent = props.parentRef?.current;
+    if (!parent) return;
+
+    const handleScroll = () => {
+      lastScrollTopRef.current = parent.scrollTop;
+      const isAtBottom = checkIfAtBottom(parent);
+      setAutoScroll(isAtBottom);
+    };
+
+    parent.addEventListener("scroll", handleScroll);
+    return () => parent.removeEventListener("scroll", handleScroll);
+  }, [props.parentRef]);
+
+  // 自动滚动效果
+  useEffect(() => {
+    const parent = props.parentRef?.current;
+    if (!parent || props.content === lastContentRef.current) return;
+
+    // 只有当之前开启了自动滚动，且内容发生变化时才滚动
+    if (autoScroll) {
+      parent.scrollTop = parent.scrollHeight;
+    }
+
+    lastContentRef.current = props.content;
+  }, [props.content, props.parentRef, autoScroll]);
 
   return (
     <div
@@ -363,21 +437,4 @@ export function Markdown(
       )}
     </div>
   );
-}
-
-function formatThinkText(text: string): string {
-  // 检查是否以 <think> 开头但没有结束标签
-  if (text.startsWith("<think>") && !text.includes("</think>")) {
-    // 获取 <think> 后的所有内容
-    const thinkContent = text.slice("<think>".length);
-    // 渲染为"思考中"状态
-    return `<details>\n<summary>${Locale.NewChat.Thinking}</summary>\n\n${thinkContent}\n\n</details>`;
-  }
-
-  // 处理完整的 think 标签
-  const pattern = /^<think>([\s\S]*?)<\/think>/;
-  return text.replace(pattern, (match, thinkContent) => {
-    // 渲染为"思考完成"状态
-    return `<details>\n<summary>${Locale.NewChat.Think}</summary>\n\n${thinkContent}\n\n</details>`;
-  });
 }

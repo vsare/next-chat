@@ -764,7 +764,7 @@ const en: LocaleType = {
     NotShow: "Never Show Again",
     ConfirmNoShow: "Confirm to disable？You can enable it in settings later.",
     Thinking: "Thinking...",
-    Think: "Content of Thought",
+    Think: "Deep Thought",
   },
 
   UI: {
