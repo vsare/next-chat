@@ -139,7 +139,11 @@ export function Avatar(props: { model?: ModelType; avatar?: string }) {
             return <GrokIcon className="user-avatar model-avatar" alt="Grok" />;
           }
 
-          if (model.includes("qwen")) {
+          if (
+            model.includes("qwen") ||
+            model.includes("qwq") ||
+            model.includes("qvq")
+          ) {
             return <QwenIcon className="user-avatar model-avatar" alt="Qwen" />;
           }
 

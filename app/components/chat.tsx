@@ -748,8 +748,10 @@ export function ChatActions(props: {
             onClick={() => {
               if (currentModel === "gemini-2.0-flash-exp") {
                 setShowPluginSelector(true);
-              } else {
+              } else if (pluginStore.getAll().length === 0) {
                 navigate(Path.Plugins);
+              } else {
+                setShowPluginSelector(true);
               }
             }}
             text={Locale.Plugin.Name}
