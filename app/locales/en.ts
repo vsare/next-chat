@@ -103,6 +103,10 @@ const en: LocaleType = {
       copyLastCode: "Copy Last Code Block",
       showShortcutKey: "Show Shortcuts",
     },
+    TokenInfo: {
+      TokenCount: (count: number) => `${count} Tokens`,
+      FirstDelay: (delay: number) => `First Response: ${delay}ms`,
+    },
   },
   Export: {
     Title: "Export Messages",
@@ -484,6 +488,62 @@ const en: LocaleType = {
       CustomModel: {
         Title: "Custom Models",
         SubTitle: "Custom model options, seperated by comma",
+        ModelSelector: "Select Models",
+        FetchModels: "Load Models",
+        FetchSuccessFromClient: (count: number) =>
+          `Successfully fetched ${count} models from client configuration`,
+        FetchSuccessFromServer: (count: number) =>
+          `Successfully fetched ${count} models from server configuration`,
+        FetchFailedFromClient: (error: string) =>
+          `Failed to fetch models from client configuration: ${error}`,
+        FetchFailedFromServer: (error: string) =>
+          `Failed to fetch models from server configuration: ${error}`,
+        ApiKeyRequired: "Please set API key first",
+        InvalidResponse: "Invalid response format",
+        RequestFailed: (status: number) => `Request failed: ${status}`,
+        InputPlaceholder: "Enter custom model name and press Enter to add",
+        SelectAll: "Select All",
+        SelectNone: "Select None",
+        ModelExists: "Model already exists",
+        EditCategories: "Edit Model Categories",
+        CategoryName: "Category Name",
+        MatchKeyword: "Match Keyword",
+        AddCategory: "Add",
+        CategoryTip:
+          'Match keyword will be used to identify model categories, e.g. "gpt" will match all models containing "gpt"',
+        ExistingCategories: "Existing Custom Categories",
+        NoCustomCategories: "No custom categories yet",
+        InputPlaceholderEnter: "Enter custom model name and press Enter to add",
+        RefreshModels: "Refresh Models",
+        ModelNameLabel: "Model Name",
+        MatchRule: "Match Rule",
+        RestoreDefaults: "Restore Defaults",
+        DeleteConfirm: "Confirm to delete this model?",
+        AuthRequired: "Please enter access password in settings first",
+        SaveEditFailed: "Failed to update local storage",
+        DeleteModelSuccess: "Model deleted from local storage",
+        DeleteModelFailed: "Failed to update local storage",
+        ModelNotFound: "Model not found for deletion",
+        ModelNotFoundInList: "Model not found in complete model list",
+        EditModelNotFound: "Model not found for editing",
+        EditModelNotFoundInList:
+          "Model not found in complete model list for editing",
+        FetchFailed: "Failed to fetch model list",
+        RestoreRulesSuccess: "Default matching rules restored",
+        RestoreRulesFailed: "Failed to restore default matching rules",
+        MatchPrefix: "Match",
+        ModelCategory: "Model Category",
+        ModelCategoryOther: "Other",
+        TestModel: "Test Models",
+        Testing: "Testing...",
+        TestStart: "Starting to test {0} models...",
+        TestSuccess: "{0}: Test successful ({1}ms)",
+        TestFailed: "{0}: Test failed",
+        TestComplete: "Test complete: {0}/{1} models available",
+        TestError: "Test error: {0}",
+        SelectModelsToTest: "Please select models to test first",
+        Unavailable: "Unavailable",
+        NoModelsToTest: "No models to test currently",
       },
       Google: {
         ApiKey: {
@@ -645,6 +705,9 @@ const en: LocaleType = {
   Discovery: {
     Name: "Discovery",
   },
+  Mcp: {
+    Name: "MCP",
+  },
   FineTuned: {
     Sysmessage: "You are an assistant that",
   },
@@ -777,6 +840,8 @@ const en: LocaleType = {
     Import: "Import",
     Sync: "Sync",
     Config: "Config",
+    Search: "Search",
+    All: "All",
   },
   Exporter: {
     Description: {

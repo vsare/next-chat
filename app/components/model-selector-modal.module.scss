@@ -1,0 +1,210 @@
+.modelSelector {
+  &Header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+
+    &Title {
+      font-size: 14px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    &Controls {
+      display: flex;
+      flex: 1;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    &SearchArea {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex: 1;
+    }
+
+    &SearchInput {
+      width: 100%;
+      padding: 4px 10px;
+      border: var(--border-in-light);
+      border-radius: 10px;
+      background: var(--white);
+      box-shadow: var(--input-shadow);
+      font-size: 14px;
+      line-height: 1.2;
+      height: 32px;
+      color: var(--black);
+    }
+
+    &CategorySelect {
+      padding: 4px 8px;
+      border: var(--border-in-light);
+      border-radius: 10px;
+      background: var(--white);
+      box-shadow: var(--input-shadow);
+      font-size: 14px;
+      height: 32px;
+      line-height: 1.2;
+      color: var(--black);
+      width: auto;
+      appearance: auto;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    &Buttons {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+  }
+
+  &Loading {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  &ModelName {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--text-color);
+    padding: 2px 4px;
+    border-radius: 8px;
+    display: inline-block;
+  }
+
+  &EditForm {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    padding: 0 20px;
+
+    &Row {
+      display: flex;
+      align-items: center;
+      max-width: 90%;
+      margin: 0 auto;
+
+      &Label {
+        width: 80px;
+        white-space: nowrap;
+        margin-right: 8px;
+      }
+
+      &Input {
+        padding: 4px 8px;
+        border: var(--border-in-light);
+        border-radius: 8px;
+        flex: 1;
+      }
+    }
+
+    &Buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 8px;
+      max-width: 90%;
+      margin: 8px auto 0;
+    }
+  }
+
+  &CustomInput {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    padding: 0 10px;
+  }
+
+  &CategoryEditor {
+    .categoryEditForm {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      padding: 0 20px;
+
+      &Row {
+        display: flex;
+        align-items: center;
+        max-width: 90%;
+        margin: 0 auto;
+      }
+
+      &Buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 8px;
+        max-width: 90%;
+        margin: 8px auto 0;
+      }
+    }
+  }
+}
+
+// 添加媒体查询，在移动设备上隐藏标题
+@media (max-width: 600px) {
+  .modelSelector {
+    &HeaderTitle {
+      display: none; // 在移动端隐藏标题
+    }
+    
+    &HeaderControls {
+      width: 100%; // 让控制区域占据全部宽度
+    }
+  }
+}
+
+.modelResponseTime {
+  font-size: 12px;
+  color: var(--black);
+  opacity: 0.7;
+  margin-right: 10px;
+}
+
+.responseTimeFast {
+  color: #52c41a; // 绿色
+  font-weight: bold;
+}
+
+.responseTimeMedium {
+  color: #faad14; // 黄色
+  font-weight: bold;
+}
+
+.responseTimeSlow {
+  color: #ff7875; // 红色
+  font-weight: bold;
+}
+
+.modelTimeout {
+  color: #ff4d4f; // 红色
+  font-weight: bold;
+}
+
+.modelUnavailable {
+  opacity: 0.5;
+  background-color: var(--second);
+}
+
+.modelTestButton {
+  font-size: 12px;
+  color: var(--primary);
+  background-color: transparent;
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-right: 10px;
+  font-weight: bold;
+} 

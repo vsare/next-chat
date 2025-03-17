@@ -1,10 +1,20 @@
 @import "../styles/animation.scss";
 
-.attach-images {
+.attach-images, .attach-files {
   position: absolute;
   left: 30px;
   bottom: 32px;
   display: flex;
+}
+
+.attachments-container {
+  position: absolute;
+  left: 30px;
+  bottom: 32px;
+  display: flex;
+  flex-wrap: wrap;
+  max-width: calc(100% - 120px);
+  gap: 10px;
 }
 
 .attach-image {
@@ -95,6 +105,18 @@
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    @media screen and (max-width: 600px) {
+      width: var(--icon-width);
+      
+      &:hover {
+        width: var(--icon-width);
+      }
+      
+      .text {
+        display: none;
+      }
     }
   }
 }
@@ -790,4 +812,135 @@
   @media screen and (min-width: 600px) {
     font-size: 12px;
   }
+}
+
+// 修改文件附件样式，使其与图片附件完全一致
+.attach-file {
+  cursor: default;
+  width: 64px;
+  height: 64px;
+  border: rgba($color: #888, $alpha: 0.2) 1px solid;
+  border-radius: 5px;
+  margin-right: 10px;
+  background-color: var(--white);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .attach-file-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 5px;
+  }
+
+  .attach-file-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
+
+  .attach-file-info {
+    text-align: center;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .attach-file-name {
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .attach-file-size {
+    font-size: 9px;
+    color: var(--black-50);
+  }
+
+  .attach-image-mask {
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: all ease 0.2s;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .attach-image-mask:hover {
+    opacity: 1;
+  }
+
+  .delete-image {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    float: right;
+    background-color: var(--white);
+  }
+}
+
+// 文件类型图标样式
+.file-text, .file-html, .file-js, .file-css, .file-json, .file-md, .file-py, .file-csv, .file-xml, .file-document {
+  color: var(--primary);
+}
+
+// 添加 Word 文件图标样式
+.file-word {
+  color: #2b579a; // Word 蓝色
+}
+
+// 添加 PowerPoint 文件图标样式
+.file-powerpoint {
+  color: #d24726; // PowerPoint 橙色
+}
+
+// 添加 PDF 文件图标样式
+.file-pdf {
+  color: #f40f02; // PDF 红色
+}
+
+// 添加 ZIP 文件图标样式
+.file-zip {
+  color: #ffc107; // ZIP 黄色
+}
+
+// 添加证书和密钥文件图标样式
+.file-csr, .file-key, .file-cert {
+  color: #28a745; // 安全绿色
+}
+
+// 添加 Excel 文件图标样式
+.file-excel {
+  color: #217346; // Excel 绿色
+}
+
+// 添加 RDP 文件图标样式
+.file-rdp {
+  color: #0078d7; // 微软蓝色
+}
+
+// 添加 SVG 文件图标样式
+.file-svg {
+  color: #ff9800; // 橙色
+}
+
+// 添加 Dockerfile 图标样式
+.file-dockerfile {
+  color: #2496ed; // Docker 蓝色
 }

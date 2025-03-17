@@ -102,6 +102,10 @@ const cn = {
       copyLastCode: "复制最后一个代码块",
       showShortcutKey: "显示快捷方式",
     },
+    TokenInfo: {
+      TokenCount: (count: number) => `${count} Tokens`,
+      FirstDelay: (delay: number) => `首字延迟: ${delay}ms`,
+    },
   },
   Export: {
     Title: "分享聊天记录",
@@ -502,6 +506,61 @@ const cn = {
       CustomModel: {
         Title: "自定义模型名",
         SubTitle: "增加自定义模型可选项，使用英文逗号隔开",
+        ModelSelector: "选择模型",
+        FetchModels: "加载模型列表",
+        FetchSuccessFromClient: (count: number) =>
+          `成功从客户端配置获取到 ${count} 个模型`,
+        FetchSuccessFromServer: (count: number) =>
+          `成功从服务端配置获取到 ${count} 个模型`,
+        FetchFailedFromClient: (error: string) =>
+          `从客户端配置获取模型失败: ${error}`,
+        FetchFailedFromServer: (error: string) =>
+          `从服务端配置获取模型失败: ${error}`,
+        ApiKeyRequired: "请先设置API密钥",
+        InvalidResponse: "无效的响应格式",
+        RequestFailed: (status: number) => `请求失败: ${status}`,
+        InputPlaceholder: "输入自定义模型名称并按回车添加",
+        SelectAll: "全选",
+        SelectNone: "全不选",
+        ModelExists: "模型已存在",
+        EditCategories: "编辑模型类别",
+        CategoryName: "类别名称",
+        MatchKeyword: "匹配关键词",
+        AddCategory: "添加",
+        CategoryTip:
+          '匹配关键词将用于识别模型类别，例如"gpt"将匹配所有包含"gpt"的模型',
+        ExistingCategories: "现有自定义类别",
+        NoCustomCategories: "暂无自定义类别",
+        InputPlaceholderEnter: "输入自定义模型名称并按回车添加",
+        RefreshModels: "重新获取模型",
+        ModelNameLabel: "模型名称",
+        MatchRule: "匹配规则",
+        RestoreDefaults: "恢复默认",
+        DeleteConfirm: "确认删除此模型?",
+        AuthRequired: "请先在设置中输入访问密码",
+        SaveEditFailed: "更新本地存储失败",
+        DeleteModelSuccess: "已从本地存储中删除模型",
+        DeleteModelFailed: "更新本地存储失败",
+        ModelNotFound: "找不到要删除的模型",
+        ModelNotFoundInList: "在完整模型列表中找不到要删除的模型",
+        EditModelNotFound: "找不到要编辑的模型",
+        EditModelNotFoundInList: "在完整模型列表中找不到要编辑的模型",
+        FetchFailed: "获取模型列表失败",
+        RestoreRulesSuccess: "已恢复默认匹配规则",
+        RestoreRulesFailed: "恢复默认匹配规则失败",
+        MatchPrefix: "匹配",
+        ModelCategory: "模型类别",
+        ModelCategoryOther: "其他",
+        TestModel: "测试模型",
+        Testing: "测试中...",
+        TestStart: "开始测试 {0} 个模型...",
+        TestSuccess: "{0}: 测试成功 ({1}ms)",
+        TestFailed: "{0}: 测试失败",
+        TestComplete: "测试完成: {0}/{1} 个模型可用",
+        TestError: "测试出错: {0}",
+        SelectModelsToTest: "请先选择要测试的模型",
+        Unavailable: "不可用",
+        NoModelsToTest: "当前没有可测试的模型",
       },
     },
 
@@ -635,6 +694,9 @@ const cn = {
   },
   Discovery: {
     Name: "发现",
+  },
+  Mcp: {
+    Name: "MCP",
   },
   FineTuned: {
     Sysmessage: "你是一个助手",
@@ -771,6 +833,8 @@ const cn = {
     Import: "导入",
     Sync: "同步",
     Config: "配置",
+    Search: "搜索",
+    All: "全部",
   },
   Exporter: {
     Description: {

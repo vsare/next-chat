@@ -1,8 +1,10 @@
 // @ts-nocheck
-import { 
+import {
   getMessageTextContent,
   trimTopic,
   getMessageTextContentWithoutThinking,
+  isDalle3,
+  safeLocalStorage,
 } from "../utils";
 
 import { indexedDBStorage } from "@/app/utils/indexedDB-storage";
@@ -23,10 +25,12 @@ import {
   StoreKey,
   SUMMARIZE_MODEL,
   GEMINI_SUMMARIZE_MODEL,
+  DEEPSEEK_SUMMARIZE_MODEL,
   ServiceProvider,
+  MCP_SYSTEM_TEMPLATE,
+  MCP_TOOLS_TEMPLATE,
 } from "../constant";
 import Locale, { getLang } from "../locales";
-import { isDalle3, safeLocalStorage } from "../utils";
 import { prettyObject } from "../utils/format";
 import { createPersistStore } from "../utils/store";
 import { estimateTokenLength } from "../utils/token";
@@ -34,6 +38,8 @@ import { ModelConfig, ModelType, useAppConfig } from "./config";
 import { useAccessStore } from "./access";
 import { collectModelsWithDefaultModel } from "../utils/model";
 import { createEmptyMask, Mask } from "./mask";
+import { executeMcpAction, getAllTools, isMcpEnabled } from "../mcp/actions";
+import { extractMcpJson, isMcpJson } from "../mcp/utils";
 
 const localStorage = safeLocalStorage();
 
@@ -58,6 +64,7 @@ export type ChatMessage = RequestMessage & {
   model?: ModelType;
   tools?: ChatMessageTool[];
   audio_url?: string;
+  isMcpResponse?: boolean;
 };
 
 export function createMessage(override: Partial<ChatMessage>): ChatMessage {
@@ -118,8 +125,8 @@ function getSummarizeModel(
   currentModel: string,
   providerName: string,
 ): string[] {
-  // force to use 4o-mini to summarize
-  if (true || currentModel.startsWith("gpt") || currentModel.startsWith("chatgpt")) {
+  // if it is using gpt-* models, force to use 4o-mini to summarize
+  if (currentModel.startsWith("gpt") || currentModel.startsWith("chatgpt")) {
     const configStore = useAppConfig.getState();
     const accessStore = useAccessStore.getState();
     const allModel = collectModelsWithDefaultModel(
@@ -139,7 +146,10 @@ function getSummarizeModel(
   }
   if (currentModel.startsWith("gemini")) {
     return [GEMINI_SUMMARIZE_MODEL, ServiceProvider.Google];
+  } else if (currentModel.startsWith("deepseek-")) {
+    return [DEEPSEEK_SUMMARIZE_MODEL, ServiceProvider.DeepSeek];
   }
+
   return [currentModel, providerName];
 }
 
@@ -194,6 +204,80 @@ function fillTemplateWith(input: string, modelConfig: ModelConfig) {
   return output;
 }
 
+// 添加一个缓存变量来存储MCP状态和系统提示
+let mcpCache: {
+  enabled: boolean | null;
+  systemPrompt: string;
+} = {
+  enabled: null,
+  systemPrompt: "",
+};
+
+// 修改getMcpSystemPrompt函数，添加缓存机制
+async function getMcpSystemPrompt(forceRefresh = false): Promise<string> {
+  // 如果已有缓存且不强制刷新，直接返回
+  if (mcpCache.systemPrompt && !forceRefresh) {
+    return mcpCache.systemPrompt;
+  }
+
+  const tools = await getAllTools();
+  let toolsStr = "";
+
+  tools.forEach((i) => {
+    // error client has no tools
+    if (!i.tools) return;
+
+    toolsStr += MCP_TOOLS_TEMPLATE.replace(
+      "{{ clientId }}",
+      i.clientId,
+    ).replace(
+      "{{ tools }}",
+      i.tools.tools.map((p: object) => JSON.stringify(p, null, 2)).join("\n"),
+    );
+  });
+
+  const prompt = MCP_SYSTEM_TEMPLATE.replace("{{ MCP_TOOLS }}", toolsStr);
+  // 更新缓存
+  mcpCache.systemPrompt = prompt;
+  return prompt;
+}
+
+// 优化checkMcpEnabledAndPreloadPrompt函数
+async function checkMcpEnabledAndPreloadPrompt(): Promise<boolean> {
+  // 如果已有缓存状态，直接返回
+  if (mcpCache.enabled !== null) {
+    // 如果MCP已启用但系统提示尚未加载，则预加载系统提示
+    if (mcpCache.enabled && !mcpCache.systemPrompt) {
+      getMcpSystemPrompt().catch(console.error);
+    }
+    return mcpCache.enabled;
+  }
+
+  const enabled = await isMcpEnabled();
+  mcpCache.enabled = enabled;
+
+  // 如果启用了MCP，预加载系统提示
+  if (enabled) {
+    try {
+      await getMcpSystemPrompt();
+    } catch (error) {
+      console.error("Failed to preload MCP system prompt:", error);
+    }
+  }
+
+  return enabled;
+}
+
+// 添加一个函数来重置MCP缓存（当配置变更时使用）
+function resetMcpCache() {
+  mcpCache = {
+    enabled: null,
+    systemPrompt: "",
+  };
+  // 立即开始预加载新的系统提示
+  checkMcpEnabledAndPreloadPrompt();
+}
+
 const DEFAULT_CHAT_STATE = {
   sessions: [createEmptySession()],
   currentSessionIndex: 0,
@@ -219,7 +303,11 @@ export const useChatStore = createPersistStore(
         const newSession = createEmptySession();
 
         newSession.topic = currentSession.topic;
-        newSession.messages = [...currentSession.messages];
+        // 深拷贝消息
+        newSession.messages = currentSession.messages.map((msg) => ({
+          ...msg,
+          id: nanoid(), // 生成新的消息 ID
+        }));
         newSession.mask = {
           ...currentSession.mask,
           modelConfig: {
@@ -363,24 +451,33 @@ export const useChatStore = createPersistStore(
           session.messages = session.messages.concat();
           session.lastUpdate = Date.now();
         });
+
         get().updateStat(message, targetSession);
+
+        // 使用缓存的MCP状态进行检查
+        if (mcpCache.enabled) {
+          get().checkMcpJson(message);
+        }
+
         get().summarizeSession(false, targetSession);
       },
 
-      async onUserInput(content: string, attachImages?: string[]) {
+      async onUserInput(
+        content: string,
+        attachImages?: string[],
+        isMcpResponse?: boolean,
+      ) {
         const session = get().currentSession();
         const modelConfig = session.mask.modelConfig;
 
-        const userContent = fillTemplateWith(content, modelConfig);
-        console.log("[User Input] after template: ", userContent);
+        // MCP Response no need to fill template
+        let mContent: string | MultimodalContent[] = isMcpResponse
+          ? content
+          : fillTemplateWith(content, modelConfig);
 
-        let mContent: string | MultimodalContent[] = userContent;
-
-        if (attachImages && attachImages.length > 0) {
+        if (!isMcpResponse && attachImages && attachImages.length > 0) {
           mContent = [
-            ...(userContent
-              ? [{ type: "text" as const, text: userContent }]
-              : []),
+            ...(content ? [{ type: "text" as const, text: content }] : []),
             ...attachImages.map((url) => ({
               type: "image_url" as const,
               image_url: { url },
@@ -391,6 +488,7 @@ export const useChatStore = createPersistStore(
         let userMessage: ChatMessage = createMessage({
           role: "user",
           content: mContent,
+          isMcpResponse,
         });
 
         const botMessage: ChatMessage = createMessage({
@@ -400,7 +498,7 @@ export const useChatStore = createPersistStore(
         });
 
         // get recent messages
-        const recentMessages = get().getMessagesWithMemory();
+        const recentMessages = await get().getMessagesWithMemory();
         const sendMessages = recentMessages.concat(userMessage);
         const messageIndex = session.messages.length + 1;
 
@@ -499,7 +597,12 @@ export const useChatStore = createPersistStore(
         }
       },
 
-      getMessagesWithMemory() {
+      async getMessagesWithMemory() {
+        // 确保MCP状态已初始化
+        if (mcpCache.enabled === null) {
+          await checkMcpEnabledAndPreloadPrompt();
+        }
+
         const session = get().currentSession();
         const modelConfig = session.mask.modelConfig;
         const clearContextIndex = session.clearContextIndex ?? 0;
@@ -515,24 +618,39 @@ export const useChatStore = createPersistStore(
           (session.mask.modelConfig.model.startsWith("gpt-") ||
             session.mask.modelConfig.model.startsWith("chatgpt-"));
 
+        // 直接使用缓存的MCP状态，不再需要异步检查
+        const mcpEnabled = mcpCache.enabled;
+        const mcpSystemPrompt = mcpEnabled ? mcpCache.systemPrompt : "";
+
         var systemPrompts: ChatMessage[] = [];
-        systemPrompts = shouldInjectSystemPrompts
-          ? [
-              createMessage({
-                role: "system",
-                content: fillTemplateWith("", {
+
+        if (shouldInjectSystemPrompts) {
+          systemPrompts = [
+            createMessage({
+              role: "system",
+              content:
+                fillTemplateWith("", {
                   ...modelConfig,
                   template: DEFAULT_SYSTEM_TEMPLATE,
-                }),
-              }),
-            ]
-          : [];
-        if (shouldInjectSystemPrompts) {
+                }) + mcpSystemPrompt,
+            }),
+          ];
+        } else if (mcpEnabled) {
+          systemPrompts = [
+            createMessage({
+              role: "system",
+              content: mcpSystemPrompt,
+            }),
+          ];
+        }
+
+        if (shouldInjectSystemPrompts || mcpEnabled) {
           console.log(
             "[Global System Prompt] ",
             systemPrompts.at(0)?.content ?? "empty",
           );
         }
+
         const memoryPrompt = get().getMemoryPrompt();
         // long term memory
         const shouldSendLongTermMemory =
@@ -775,6 +893,46 @@ export const useChatStore = createPersistStore(
         set({
           lastInput,
         });
+      },
+      /** check if the message contains MCP JSON and execute the MCP action */
+      checkMcpJson(message: ChatMessage) {
+        // 直接使用缓存的MCP状态
+        if (!mcpCache.enabled) return;
+
+        const content = getMessageTextContent(message);
+        if (isMcpJson(content)) {
+          try {
+            const mcpRequest = extractMcpJson(content);
+            if (mcpRequest) {
+              console.debug("[MCP Request]", mcpRequest);
+
+              executeMcpAction(mcpRequest.clientId, mcpRequest.mcp)
+                .then((result) => {
+                  console.log("[MCP Response]", result);
+                  const mcpResponse =
+                    typeof result === "object"
+                      ? JSON.stringify(result)
+                      : String(result);
+                  get().onUserInput(
+                    `\`\`\`json:mcp-response:${mcpRequest.clientId}\n${mcpResponse}\n\`\`\``,
+                    [],
+                    true,
+                  );
+                })
+                .catch((error) => showToast("MCP execution failed", error));
+            }
+          } catch (error) {
+            console.error("[Check MCP JSON]", error);
+          }
+        }
+      },
+      // 在应用初始化时检查MCP状态
+      async initMcp() {
+        return await checkMcpEnabledAndPreloadPrompt();
+      },
+      // 添加一个方法用于在MCP配置变更时重置缓存
+      resetMcpCache() {
+        resetMcpCache();
       },
     };
 
