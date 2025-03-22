@@ -258,10 +258,6 @@ Latex inline: \\(x^2\\)
 Latex block: $$e=mc^2$$
 `;
 
-export const SUMMARIZE_MODEL = "gpt-4o-mini";
-export const GEMINI_SUMMARIZE_MODEL = "gemini-pro";
-export const DEEPSEEK_SUMMARIZE_MODEL = "deepseek-chat";
-
 export const KnowledgeCutOffDate: Record<string, string> = {
   default: "2021-09",
   "gpt-4-turbo": "2023-12",
@@ -330,6 +326,8 @@ const googleModels = [
   "gemini-exp-1121",
   "learnlm-1.5-pro-experimental",
   "gemini-pro-vision",
+  "gemini-2.0-flash-exp",
+  "gemini-2.0-pro-exp-02-05",
 ];
 
 const anthropicModels = [

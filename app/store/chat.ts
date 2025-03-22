@@ -23,9 +23,6 @@ import {
   DEFAULT_SYSTEM_TEMPLATE,
   KnowledgeCutOffDate,
   StoreKey,
-  SUMMARIZE_MODEL,
-  GEMINI_SUMMARIZE_MODEL,
-  DEEPSEEK_SUMMARIZE_MODEL,
   ServiceProvider,
   MCP_SYSTEM_TEMPLATE,
   MCP_TOOLS_TEMPLATE,
@@ -35,10 +32,13 @@ import { prettyObject } from "../utils/format";
 import { createPersistStore } from "../utils/store";
 import { estimateTokenLength } from "../utils/token";
 import { ModelConfig, ModelType, useAppConfig } from "./config";
-import { useAccessStore } from "./access";
-import { collectModelsWithDefaultModel } from "../utils/model";
 import { createEmptyMask, Mask } from "./mask";
-import { executeMcpAction, getAllTools, isMcpEnabled } from "../mcp/actions";
+import {
+  executeMcpAction,
+  getAllTools,
+  getClientsStatus,
+  isMcpEnabled,
+} from "../mcp/actions";
 import { extractMcpJson, isMcpJson } from "../mcp/utils";
 
 const localStorage = safeLocalStorage();
@@ -125,32 +125,6 @@ function getSummarizeModel(
   currentModel: string,
   providerName: string,
 ): string[] {
-  // if it is using gpt-* models, force to use 4o-mini to summarize
-  // if (currentModel.startsWith("gpt") || currentModel.startsWith("chatgpt")) {
-  if (true) {
-    const configStore = useAppConfig.getState();
-    const accessStore = useAccessStore.getState();
-    const allModel = collectModelsWithDefaultModel(
-      configStore.models,
-      [configStore.customModels, accessStore.customModels].join(","),
-      accessStore.defaultModel,
-    );
-    const summarizeModel = allModel.find(
-      (m) => m.name === SUMMARIZE_MODEL && m.available,
-    );
-    if (summarizeModel) {
-      return [
-        summarizeModel.name,
-        summarizeModel.provider?.providerName as string,
-      ];
-    }
-  }
-  if (currentModel.startsWith("gemini")) {
-    return [GEMINI_SUMMARIZE_MODEL, ServiceProvider.Google];
-  } else if (currentModel.startsWith("deepseek-")) {
-    return [DEEPSEEK_SUMMARIZE_MODEL, ServiceProvider.DeepSeek];
-  }
-
   return [currentModel, providerName];
 }
 
@@ -214,30 +188,44 @@ let mcpCache: {
   systemPrompt: "",
 };
 
-// 修改getMcpSystemPrompt函数，添加缓存机制
+// 修改getMcpSystemPrompt函数，只包含活跃状态的工具
 async function getMcpSystemPrompt(forceRefresh = false): Promise<string> {
   // 如果已有缓存且不强制刷新，直接返回
   if (mcpCache.systemPrompt && !forceRefresh) {
     return mcpCache.systemPrompt;
   }
 
+  // 获取所有工具
   const tools = await getAllTools();
+  // 获取所有客户端状态
+  const clientStatuses = await getClientsStatus();
+
   let toolsStr = "";
+  let hasActiveTools = false;
 
   tools.forEach((i) => {
-    // error client has no tools
+    // 跳过没有工具的客户端
     if (!i.tools) return;
 
-    toolsStr += MCP_TOOLS_TEMPLATE.replace(
-      "{{ clientId }}",
-      i.clientId,
-    ).replace(
-      "{{ tools }}",
-      i.tools.tools.map((p: object) => JSON.stringify(p, null, 2)).join("\n"),
-    );
+    // 检查客户端状态，只包含活跃状态的客户端
+    const clientStatus = clientStatuses[i.clientId];
+    if (clientStatus && clientStatus.status === "active") {
+      hasActiveTools = true;
+      toolsStr += MCP_TOOLS_TEMPLATE.replace(
+        "{{ clientId }}",
+        i.clientId,
+      ).replace(
+        "{{ tools }}",
+        i.tools.tools.map((p: object) => JSON.stringify(p, null, 2)).join("\n"),
+      );
+    }
   });
 
-  const prompt = MCP_SYSTEM_TEMPLATE.replace("{{ MCP_TOOLS }}", toolsStr);
+  // 如果没有活跃的工具，返回空字符串
+  const prompt = hasActiveTools
+    ? MCP_SYSTEM_TEMPLATE.replace("{{ MCP_TOOLS }}", toolsStr)
+    : "";
+
   // 更新缓存
   mcpCache.systemPrompt = prompt;
   return prompt;
@@ -619,24 +607,30 @@ export const useChatStore = createPersistStore(
           (session.mask.modelConfig.model.startsWith("gpt-") ||
             session.mask.modelConfig.model.startsWith("chatgpt-"));
 
-        // 直接使用缓存的MCP状态，不再需要异步检查
+        // 直接使用缓存的MCP状态
         const mcpEnabled = mcpCache.enabled;
         const mcpSystemPrompt = mcpEnabled ? mcpCache.systemPrompt : "";
 
         var systemPrompts: ChatMessage[] = [];
 
+        // 修改这部分逻辑，确保不会发送空的系统提示词
         if (shouldInjectSystemPrompts) {
-          systemPrompts = [
-            createMessage({
-              role: "system",
-              content:
-                fillTemplateWith("", {
-                  ...modelConfig,
-                  template: DEFAULT_SYSTEM_TEMPLATE,
-                }) + mcpSystemPrompt,
-            }),
-          ];
-        } else if (mcpEnabled) {
+          const defaultSystemPrompt = fillTemplateWith("", {
+            ...modelConfig,
+            template: DEFAULT_SYSTEM_TEMPLATE,
+          });
+
+          // 只有当有默认系统提示词或MCP系统提示词时才添加系统消息
+          if (defaultSystemPrompt || mcpSystemPrompt) {
+            systemPrompts = [
+              createMessage({
+                role: "system",
+                content: defaultSystemPrompt + mcpSystemPrompt,
+              }),
+            ];
+          }
+        } else if (mcpEnabled && mcpSystemPrompt) {
+          // 只有当MCP启用且有MCP系统提示词时才添加系统消息
           systemPrompts = [
             createMessage({
               role: "system",
@@ -645,7 +639,7 @@ export const useChatStore = createPersistStore(
           ];
         }
 
-        if (shouldInjectSystemPrompts || mcpEnabled) {
+        if (systemPrompts.length > 0) {
           console.log(
             "[Global System Prompt] ",
             systemPrompts.at(0)?.content ?? "empty",

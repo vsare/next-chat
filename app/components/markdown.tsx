@@ -11,17 +11,11 @@ import { copyToClipboard, useWindowSize } from "../utils";
 import mermaid from "mermaid";
 import Locale from "../locales";
 import LoadingIcon from "../icons/three-dots.svg";
-import ReloadButtonIcon from "../icons/reload.svg";
 import React from "react";
 import { useDebouncedCallback } from "use-debounce";
-import { showImageModal, FullScreen, showToast } from "./ui-lib";
-import {
-  ArtifactsShareButton,
-  HTMLPreview,
-  HTMLPreviewHander,
-} from "./artifacts";
+import { showImageModal, showToast } from "./ui-lib";
+import { HTMLPreview, HTMLPreviewHander } from "./artifacts";
 import { useChatStore } from "../store";
-import { IconButton } from "./button";
 
 import { useAppConfig } from "../store/config";
 import { FileAttachment } from "./file-attachment";
@@ -160,25 +154,12 @@ export function PreCode(props: { children: any }) {
         <Mermaid code={mermaidCode} key={mermaidCode} />
       )}
       {htmlCode.length > 0 && enableArtifacts && (
-        <FullScreen className="no-dark html" right={70}>
-          <ArtifactsShareButton
-            style={{ position: "absolute", right: 20, top: 10 }}
-            getCode={() => htmlCode}
-          />
-          <IconButton
-            style={{ position: "absolute", right: 120, top: 10 }}
-            bordered
-            icon={<ReloadButtonIcon />}
-            shadow
-            onClick={() => previewRef.current?.reload()}
-          />
-          <HTMLPreview
-            ref={previewRef}
-            code={htmlCode}
-            autoHeight={!document.fullscreenElement}
-            height={!document.fullscreenElement ? 600 : height}
-          />
-        </FullScreen>
+        <HTMLPreview
+          ref={previewRef}
+          code={htmlCode}
+          autoHeight={!document.fullscreenElement}
+          height={!document.fullscreenElement ? 600 : height}
+        />
       )}
     </>
   );
@@ -314,6 +295,62 @@ function formatThinkText(text: string): string {
     return null;
   };
 
+  // 改进的 HTML 转义函数，更好地处理代码块和 HTML 标签
+  const escapeHtmlPreserveCodeBlocks = (str: string) => {
+    // 使用更复杂的正则表达式来匹配代码块
+    // 这个正则表达式匹配 ```code``` 和 `inline code`
+    const codeBlockRegex = /(```[\s\S]*?```|`[^`\n]+`)/g;
+
+    // 将字符串分割成代码块和非代码块部分
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = codeBlockRegex.exec(str)) !== null) {
+      // 添加代码块前的文本（需要转义）
+      if (match.index > lastIndex) {
+        parts.push({
+          text: str.substring(lastIndex, match.index),
+          isCode: false,
+        });
+      }
+
+      // 添加代码块（不需要转义）
+      parts.push({
+        text: match[0],
+        isCode: true,
+      });
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // 添加最后一部分文本（如果有）
+    if (lastIndex < str.length) {
+      parts.push({
+        text: str.substring(lastIndex),
+        isCode: false,
+      });
+    }
+
+    // 处理每个部分
+    return parts
+      .map((part) => {
+        if (part.isCode) {
+          // 代码块保持原样
+          return part.text;
+        } else {
+          // 非代码块部分需要转义 HTML 标签
+          return part.text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+        }
+      })
+      .join("");
+  };
+
   // 处理正在思考的情况（只有开始标签）
   if (text.startsWith("<think>") && !text.includes("</think>")) {
     // 获取 <think> 后的所有内容
@@ -331,8 +368,9 @@ function formatThinkText(text: string): string {
       console.error("保存思考开始时间出错:", e);
     }
 
-    // 给每一行添加引用符号
-    const quotedContent = thinkContent
+    // 转义内容中的HTML标签，但保留代码块，然后给每一行添加引用符号
+    const escapedContent = escapeHtmlPreserveCodeBlocks(thinkContent);
+    const quotedContent = escapedContent
       .split("\n")
       .map((line: string) => (line.trim() ? `> ${line}` : ">"))
       .join("\n");
@@ -348,15 +386,16 @@ ${quotedContent}
   // 处理完整的思考过程（有结束标签）
   const pattern = /^<think>([\s\S]*?)<\/think>/;
   return text.replace(pattern, (match, thinkContent) => {
-    // 给每一行添加引用符号
-    const quotedContent = thinkContent
+    // 转义内容中的HTML标签，但保留代码块，然后给每一行添加引用符号
+    const escapedContent = escapeHtmlPreserveCodeBlocks(thinkContent);
+    const quotedContent = escapedContent
       .split("\n")
       .map((line: string) => (line.trim() ? `> ${line}` : ">"))
       .join("\n");
 
     // 获取思考用时
     const duration = handleThinkingTime(thinkContent);
-    const durationText = duration ? ` (用时 ${duration} 秒)` : "";
+    const durationText = duration ? Locale.NewChat.ThinkingTime(duration) : "";
 
     return `<details open>
 <summary>${Locale.NewChat.Think}${durationText}</summary>
@@ -426,6 +465,57 @@ function _MarkDownContent(props: { content: string }) {
   };
 
   const escapedContent = useMemo(() => {
+    // 检查是否是 base64 图像数据
+    try {
+      // 尝试解析整个内容
+      const jsonData = JSON.parse(props.content);
+      if (jsonData.type === "base64_image") {
+        // 如果有附加文本，添加到图像后面
+        const textContent = jsonData.text ? `\n\n${jsonData.text}` : "";
+        return `![Generated Image](${jsonData.data})${textContent}`;
+      }
+    } catch (e) {
+      // 不是 JSON 格式，继续检查内容中是否包含 JSON 字符串
+
+      // 尝试匹配完整的 JSON 字符串模式
+      const jsonRegex = /(\{.*"type"\s*:\s*"base64_image".*?\})/;
+      const jsonMatch = jsonRegex.exec(props.content);
+
+      if (jsonMatch && jsonMatch[1]) {
+        try {
+          // 尝试解析匹配到的 JSON 字符串
+          const jsonData = JSON.parse(jsonMatch[1]);
+          if (jsonData.type === "base64_image" && jsonData.data) {
+            // 分析原始内容，保持文本顺序
+            const parts = props.content.split(jsonMatch[1]);
+            const beforeText = parts[0] ? `${parts[0]}\n\n` : "";
+            const afterText = parts[1] ? `\n\n${parts[1]}` : "";
+            const imageText = jsonData.text ? `\n\n${jsonData.text}` : "";
+
+            return `${beforeText}![Generated Image](${jsonData.data})${imageText}${afterText}`;
+          }
+        } catch (jsonError) {
+          console.error("Failed to parse JSON in content:", jsonError);
+        }
+      }
+
+      // 尝试其他正则表达式匹配
+      const regex = /\{"type":"base64_image","data":"(data:[^"]+)".*?\}/g;
+      const match = regex.exec(props.content);
+      if (match && match[1]) {
+        // 找到了 base64 图像数据
+        return `![Generated Image](${match[1]})`;
+      }
+
+      // 尝试另一种格式
+      const regex2 = /\{"data":"(data:[^"]+)","type":"base64_image".*?\}/g;
+      const match2 = regex2.exec(props.content);
+      if (match2 && match2[1]) {
+        // 找到了 base64 图像数据
+        return `![Generated Image](${match2[1]})`;
+      }
+    }
+
     const processedContent = replaceFileAttachments(props.content);
     return tryWrapHtmlCode(formatThinkText(escapeBrackets(processedContent)));
   }, [props.content]);
@@ -451,17 +541,8 @@ function _MarkDownContent(props: { content: string }) {
 
           // 检测并阻止javascript协议
           if (href.toLowerCase().startsWith("javascript:")) {
-            // 返回没有href的链接或替换为安全的替代方案
-            return (
-              <a
-                {...aProps}
-                onClick={(e) => e.preventDefault()}
-                style={{ color: "gray", textDecoration: "line-through" }}
-                title="已阻止不安全链接"
-              >
-                {aProps.children}
-              </a>
-            );
+            // 简单地显示文本内容，不添加任何特殊样式或提示
+            return <span>{aProps.children}</span>;
           }
 
           // 处理文件附件链接
@@ -669,7 +750,7 @@ export function Markdown(
 
   // 检测是否滚动到底部
   const checkIfAtBottom = (target: HTMLDivElement) => {
-    const threshold = 20;
+    const threshold = 10;
     const bottomPosition =
       target.scrollHeight - target.scrollTop - target.clientHeight;
     return bottomPosition <= threshold;
