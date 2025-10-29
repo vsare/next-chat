@@ -120,20 +120,6 @@ All categories:
 | preview branch | 🚫 Deprecated | -                                | -          | Merged into main branch | Features handled by pre-release |
 | mini branch    | 🚫 Deprecated | -                                | -          | Features integrated into stable version | No longer maintained independently |
 
-## 💝 Sponsorship Support
-
-This project does not seek sponsorship. However, if possible, you can support me with some SiliconFlow or VolcEngine credits. This will help me better support related models and potentially open a public station for those in need. Welcome to sponsor.
-
-| Platform     | Direct Link                                            |
-| ------------ | ----------------------------------------------------- |
-| ✅ SiliconFlow | [Register Here](https://cloud.siliconflow.cn/i/tX3hT0Ly) |
-| 🚀 VolcEngine | [Visit Now](https://volcengine.com/L/i5QyNFSX)         |
-
-
-[![image](https://raw.githubusercontent.com/tianzhentech/static/main/images/20250409181441.png)](https://yxvm.com/)
-
-[NodeSupport](https://github.com/NodeSeekDev/NodeSupport) sponsors this project
-
 <a>
 
  <picture>

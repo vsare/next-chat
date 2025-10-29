@@ -124,6 +124,8 @@ const DEFAULT_ACCESS_STATE = {
   disableFastLink: false,
   customModels: "",
   defaultModel: "",
+  compressModel: "",
+  compressProvider: "",
 
   // tts config
   edgeTTSVoiceName: "zh-CN-YunxiNeural",
@@ -230,6 +232,15 @@ export const useAccessStore = createPersistStore(
             const [model, providerName] = getModelProvider(defaultModel);
             DEFAULT_CONFIG.modelConfig.model = model;
             DEFAULT_CONFIG.modelConfig.providerName = providerName as any;
+          }
+
+          // 处理压缩模型配置
+          const compressModel = res.compressModel ?? "";
+          const compressProvider = res.compressProvider ?? "";
+          if (compressModel !== "" && compressProvider !== "") {
+            DEFAULT_CONFIG.modelConfig.compressModel = compressModel;
+            DEFAULT_CONFIG.modelConfig.compressProviderName =
+              compressProvider as any;
           }
 
           return res;

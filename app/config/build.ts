@@ -40,6 +40,8 @@ export const getBuildConfig = () => {
     buildMode,
     isApp,
     template: process.env.DEFAULT_INPUT_TEMPLATE ?? DEFAULT_INPUT_TEMPLATE,
+    compressModel: process.env.COMPRESS_MODEL ?? "",
+    compressProvider: process.env.COMPRESS_PROVIDER ?? "",
   };
 };
 

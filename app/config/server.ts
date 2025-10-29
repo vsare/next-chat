@@ -81,6 +81,8 @@ declare global {
 
       // custom template for preprocessing user input
       DEFAULT_INPUT_TEMPLATE?: string;
+      COMPRESS_MODEL?: string; // model for compress history and generate title
+      COMPRESS_PROVIDER?: string; // provider for compress model
 
       ENABLE_MCP?: string; // enable mcp functionality
     }
@@ -235,6 +237,9 @@ export const getServerSideConfig = () => {
     cloudflareKVNamespaceId: process.env.CLOUDFLARE_KV_NAMESPACE_ID,
     cloudflareKVApiKey: getApiKey(process.env.CLOUDFLARE_KV_API_KEY),
     cloudflareKVTTL: process.env.CLOUDFLARE_KV_TTL,
+
+    compressModel: process.env.COMPRESS_MODEL ?? "",
+    compressProvider: process.env.COMPRESS_PROVIDER ?? "",
 
     gtmId: process.env.GTM_ID,
     gaId: process.env.GA_ID || DEFAULT_GA_ID,
