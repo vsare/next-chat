@@ -20,7 +20,7 @@ import { getHeaders } from "../client/api";
 import { getClientConfig } from "../config/client";
 import { createPersistStore } from "../utils/store";
 import { ensure } from "../utils/clone";
-import { DEFAULT_CONFIG } from "./config";
+import { DEFAULT_CONFIG, useAppConfig } from "./config";
 import { getModelProvider } from "../utils/model";
 
 let fetchState = 0; // 0 not fetch, 1 fetching, 2 done
@@ -234,13 +234,20 @@ export const useAccessStore = createPersistStore(
             DEFAULT_CONFIG.modelConfig.providerName = providerName as any;
           }
 
-          // 处理压缩模型配置
+          // Handle compress model config
           const compressModel = res.compressModel ?? "";
           const compressProvider = res.compressProvider ?? "";
           if (compressModel !== "" && compressProvider !== "") {
             DEFAULT_CONFIG.modelConfig.compressModel = compressModel;
-            DEFAULT_CONFIG.modelConfig.compressProviderName =
-              compressProvider as any;
+            DEFAULT_CONFIG.modelConfig.compressProviderName = compressProvider as any;
+            // Update the active store if the current value is empty
+            useAppConfig.getState().update((config) => {
+              if (!config.modelConfig.compressModel) {
+                config.modelConfig.compressModel = compressModel;
+                config.modelConfig.compressProviderName =
+                  compressProvider as any;
+              }
+            });            
           }
 
           return res;
