@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSideConfig } from "@/app/config/server";
 import { ModelTestResult } from "@/app/utils/model-test";
+import { auth } from "@/app/api/auth";
+import { ModelProvider } from "@/app/constant";
+import { getModelTestApiKey } from "./auth";
+
+const MAX_MODELS_PER_REQUEST = 20;
+const MIN_TIMEOUT_SECONDS = 1;
+const MAX_TIMEOUT_SECONDS = 30;
 
 // 测试单个模型
 async function testModel(
@@ -10,15 +17,10 @@ async function testModel(
   timeoutSeconds: number = 5,
 ): Promise<ModelTestResult> {
   const startTime = Date.now();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutSeconds * 1000);
 
   try {
-    // 创建AbortController用于超时控制
-    const controller = new AbortController();
-    const timeoutId = setTimeout(
-      () => controller.abort(),
-      timeoutSeconds * 1000,
-    );
-
     // 构建请求URL
     const url = `${baseUrl}/v1/chat/completions`;
 
@@ -45,9 +47,6 @@ async function testModel(
       body: JSON.stringify(requestBody),
       signal: controller.signal,
     });
-
-    // 清除超时计时器
-    clearTimeout(timeoutId);
 
     const responseTime = Date.now() - startTime;
 
@@ -80,24 +79,41 @@ async function testModel(
       error: error.toString(),
       timeout: isTimeout,
     };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const authResult = auth(req, ModelProvider.GPT);
+    if (authResult.error) {
+      return NextResponse.json(authResult, { status: 401 });
+    }
+
     const body = await req.json();
     const { models, timeoutSeconds = 5 } = body;
 
-    if (!Array.isArray(models) || models.length === 0) {
+    if (
+      !Array.isArray(models) ||
+      models.length === 0 ||
+      models.length > MAX_MODELS_PER_REQUEST ||
+      models.some((model) => typeof model !== "string" || model.length > 200)
+    ) {
       return NextResponse.json(
-        { error: "请提供要测试的模型列表" },
+        { error: `请提供 1-${MAX_MODELS_PER_REQUEST} 个有效模型` },
         { status: 400 },
       );
     }
 
+    const normalizedTimeout = Math.min(
+      MAX_TIMEOUT_SECONDS,
+      Math.max(MIN_TIMEOUT_SECONDS, Number(timeoutSeconds) || 5),
+    );
+
     // 获取服务端配置
     const serverConfig = getServerSideConfig();
-    const apiKey = serverConfig.apiKey;
+    const apiKey = getModelTestApiKey(req, serverConfig.apiKey);
     const baseUrl = serverConfig.baseUrl || "https://api.openai.com";
 
     if (!apiKey) {
@@ -112,7 +128,12 @@ export async function POST(req: NextRequest) {
 
     // 逐个测试模型
     for (const model of models) {
-      results[model] = await testModel(model, baseUrl, apiKey, timeoutSeconds);
+      results[model] = await testModel(
+        model,
+        baseUrl,
+        apiKey,
+        normalizedTimeout,
+      );
     }
 
     return NextResponse.json({ results });

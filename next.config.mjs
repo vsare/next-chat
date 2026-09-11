@@ -36,15 +36,14 @@ const nextConfig = {
 };
 
 const CorsHeaders = [
-  { key: "Access-Control-Allow-Credentials", value: "true" },
   { key: "Access-Control-Allow-Origin", value: "*" },
   {
     key: "Access-Control-Allow-Methods",
-    value: "*",
+    value: "GET, POST, PUT, OPTIONS",
   },
   {
     key: "Access-Control-Allow-Headers",
-    value: "*",
+    value: "Authorization, Content-Type, api-key, x-api-key, x-goog-api-key",
   },
   {
     key: "Access-Control-Max-Age",
@@ -71,8 +70,10 @@ if (mode !== "export") {
       // },
       {
         // https://{resource_name}.openai.azure.com/openai/deployments/{deploy_name}/chat/completions
-        source: "/api/proxy/azure/:resource_name/deployments/:deploy_name/:path*",
-        destination: "https://:resource_name.openai.azure.com/openai/deployments/:deploy_name/:path*",
+        source:
+          "/api/proxy/azure/:resource_name/deployments/:deploy_name/:path*",
+        destination:
+          "https://:resource_name.openai.azure.com/openai/deployments/:deploy_name/:path*",
       },
       {
         source: "/api/proxy/google/:path*",
@@ -99,7 +100,7 @@ if (mode !== "export") {
         destination: "https://dashscope.aliyuncs.com/api/:path*",
       },
     ];
-    
+
     return {
       beforeFiles: ret,
     };

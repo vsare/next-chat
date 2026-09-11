@@ -48,12 +48,13 @@ typings
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variable files
-.env
-.env.test
+# dotenv environment variable files and secrets
+.env*
+!.env.template
 
-# local env files
-.env*.local
+# Source-control metadata
+.git
+.github
 
 # Next.js build output
 .next

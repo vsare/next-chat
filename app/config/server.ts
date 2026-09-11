@@ -83,8 +83,6 @@ declare global {
       DEFAULT_INPUT_TEMPLATE?: string;
       COMPRESS_MODEL?: string; // model for compress history and generate title
       COMPRESS_PROVIDER?: string; // provider for compress model
-
-      ENABLE_MCP?: string; // enable mcp functionality
     }
   }
 }
@@ -111,7 +109,7 @@ function getApiKey(keys?: string) {
     console.log(
       `[Server Config] using ${randomIndex + 1} of ${
         apiKeys.length
-      } api key - ${apiKey}`,
+      } configured API keys`,
     );
   }
 
@@ -258,6 +256,5 @@ export const getServerSideConfig = () => {
     customModels,
     defaultModel,
     allowedWebDavEndpoints,
-    enableMcp: process.env.ENABLE_MCP === "true",
   };
 };

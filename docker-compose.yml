@@ -1,38 +1,61 @@
-version: "3.9"
+x-next-chat-environment: &next-chat-environment
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+  CODE: ${CODE:-}
+  BASE_URL: ${BASE_URL:-}
+  OPENAI_ORG_ID: ${OPENAI_ORG_ID:-}
+  HIDE_USER_API_KEY: ${HIDE_USER_API_KEY:-}
+  DISABLE_GPT4: ${DISABLE_GPT4:-}
+  ENABLE_BALANCE_QUERY: ${ENABLE_BALANCE_QUERY:-}
+  DISABLE_FAST_LINK: ${DISABLE_FAST_LINK:-}
+  OPENAI_SB: ${OPENAI_SB:-}
+
+x-next-chat-service: &next-chat-service
+  build:
+    context: .
+    target: runner
+  image: next-chat-simplify:local
+  ports:
+    - "3000:3000"
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:uid=1001,gid=1001,mode=1777
+    - /app/.next/cache:uid=1001,gid=1001,mode=0750
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  healthcheck:
+    test:
+      [
+        "CMD",
+        "wget",
+        "-q",
+        "-T",
+        "5",
+        "-O",
+        "/dev/null",
+        "http://127.0.0.1:3000/",
+      ]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+    start_period: 20s
+
 services:
   NeatChat:
-    profiles: [ "no-proxy" ]
+    <<: *next-chat-service
+    profiles: ["no-proxy"]
     container_name: NeatChat
-    image: tianzhentech/chatgpt-next-web:latest
-    ports:
-      - 3000:3000
     environment:
-      - OPENAI_API_KEY=$OPENAI_API_KEY
-      - GOOGLE_API_KEY=$GOOGLE_API_KEY
-      - CODE=$CODE
-      - BASE_URL=$BASE_URL
-      - OPENAI_ORG_ID=$OPENAI_ORG_ID
-      - HIDE_USER_API_KEY=$HIDE_USER_API_KEY
-      - DISABLE_GPT4=$DISABLE_GPT4
-      - ENABLE_BALANCE_QUERY=$ENABLE_BALANCE_QUERY
-      - DISABLE_FAST_LINK=$DISABLE_FAST_LINK
-      - OPENAI_SB=$OPENAI_SB
+      <<: *next-chat-environment
 
   NeatChat-proxy:
-    profiles: [ "proxy" ]
+    <<: *next-chat-service
+    profiles: ["proxy"]
     container_name: NeatChat-proxy
-    image: tianzhentech/chatgpt-next-web:latest
-    ports:
-      - 3000:3000
     environment:
-      - OPENAI_API_KEY=$OPENAI_API_KEY
-      - GOOGLE_API_KEY=$GOOGLE_API_KEY
-      - CODE=$CODE
-      - PROXY_URL=$PROXY_URL
-      - BASE_URL=$BASE_URL
-      - OPENAI_ORG_ID=$OPENAI_ORG_ID
-      - HIDE_USER_API_KEY=$HIDE_USER_API_KEY
-      - DISABLE_GPT4=$DISABLE_GPT4
-      - ENABLE_BALANCE_QUERY=$ENABLE_BALANCE_QUERY
-      - DISABLE_FAST_LINK=$DISABLE_FAST_LINK
-      - OPENAI_SB=$OPENAI_SB
+      <<: *next-chat-environment
+      PROXY_URL: ${PROXY_URL:-}

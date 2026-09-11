@@ -949,7 +949,7 @@ export function ShortcutKeyModal(props: { onClose: () => void }) {
   );
 }
 
-function _Chat() {
+function ChatComponent() {
   type RenderMessage = ChatMessage & { preview?: boolean };
 
   const chatStore = useChatStore();
@@ -1897,7 +1897,7 @@ function _Chat() {
     );
   };
 
-  // 在 _Chat 组件内添加新状态
+  // 在 ChatComponent 组件内添加新状态
   const [editingFile, setEditingFile] = useState<FileInfo | null>(null);
   const [showFileEditModal, setShowFileEditModal] = useState(false);
 
@@ -2590,5 +2590,5 @@ function _Chat() {
 export function Chat() {
   const chatStore = useChatStore();
   const session = chatStore.currentSession();
-  return <_Chat key={session.id}></_Chat>;
+  return <ChatComponent key={session.id}></ChatComponent>;
 }

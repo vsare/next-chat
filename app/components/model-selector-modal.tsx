@@ -18,6 +18,7 @@ import {
 import styles from "./model-selector-modal.module.scss";
 import { ModelTestButton } from "./model-test-button";
 import { ModelTestResult, testModels } from "../utils/model-test";
+import { getHeaders } from "../client/api";
 
 interface ModelInfo {
   id: string;
@@ -313,8 +314,6 @@ export function ModelSelectorModal(props: {
         }
       } else {
         // 使用服务端配置
-        const baseUrl = configData.baseUrl || "https://api.openai.com";
-
         // 检查服务端是否设置了API密钥
         if (configData.apiKey !== "已设置") {
           showToast(Locale.Settings.Access.CustomModel.ApiKeyRequired);
@@ -323,15 +322,10 @@ export function ModelSelectorModal(props: {
         }
 
         try {
-          // 通过服务端代理请求
-          const response = await fetch("/api/proxy", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              url: `${baseUrl}/v1/models`,
-            }),
+          // 使用经过 provider allowlist 和服务端鉴权的 OpenAI 路由。
+          const response = await fetch("/api/openai/v1/models", {
+            method: "GET",
+            headers: getHeaders(),
           });
 
           if (!response.ok) {
@@ -703,9 +697,7 @@ export function ModelSelectorModal(props: {
         // 使用服务端测试
         const response = await fetch("/api/model-test", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: getHeaders(),
           body: JSON.stringify({
             models: [modelId],
             timeoutSeconds: testTimeout,

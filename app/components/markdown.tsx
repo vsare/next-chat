@@ -36,6 +36,10 @@ export function Mermaid(props: { code: string }) {
 
   useEffect(() => {
     if (props.code && ref.current) {
+      mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: "strict",
+      });
       mermaid
         .run({
           nodes: [ref.current],
@@ -406,7 +410,7 @@ ${quotedContent}
   });
 }
 
-function _MarkDownContent(props: { content: string }) {
+function MarkdownContentComponent(props: { content: string }) {
   // 检测文件附件格式
   const detectFileAttachments = (content: string) => {
     const fileRegex =
@@ -636,7 +640,7 @@ function _MarkDownContent(props: { content: string }) {
   );
 }
 
-export const MarkdownContent = React.memo(_MarkDownContent);
+export const MarkdownContent = React.memo(MarkdownContentComponent);
 
 export function Markdown(
   props: {

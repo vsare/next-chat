@@ -1,65 +1,46 @@
-FROM node:22-alpine AS base
+FROM node:22.22-alpine@sha256:e58326d0d441090181ac150dc2078d3e2cf6a0d42e809aebba3ef5880935ffdd AS base
+
+ENV NEXT_TELEMETRY_DISABLED=1
+WORKDIR /app
 
 FROM base AS deps
 
-RUN apk add --no-cache libc6-compat
-
-WORKDIR /app
+RUN apk add --no-cache libc6-compat \
+    && corepack enable \
+    && corepack prepare yarn@1.22.22 --activate
 
 COPY package.json yarn.lock ./
-
-# RUN echo "Current registry:" && yarn config get registry
-# RUN yarn config set registry 'https://mirrors.huaweicloud.com/repository/npm'
-RUN yarn install
+RUN HUSKY=0 yarn install --frozen-lockfile --non-interactive
 
 FROM base AS builder
 
-RUN apk update && apk add --no-cache git
+RUN corepack enable \
+    && corepack prepare yarn@1.22.22 --activate
 
-ENV OPENAI_API_KEY=""
-ENV GOOGLE_API_KEY=""
-ENV CODE=""
-ENV ENABLE_MCP=""
-WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
 RUN yarn build
 
 FROM base AS runner
-WORKDIR /app
 
-RUN apk add proxychains-ng
+ENV NODE_ENV=production \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000
 
-ENV PROXY_URL=""
-ENV OPENAI_API_KEY=""
-ENV GOOGLE_API_KEY=""
-ENV CODE=""
+RUN apk add --no-cache proxychains-ng \
+    && addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 --ingroup nodejs nextjs
 
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/.next/server ./.next/server
-RUN mkdir -p /app/app/mcp && chmod 777 /app/app/mcp
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/.next/server ./.next/server
+COPY --chown=nextjs:nodejs scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh
+
+USER nextjs
 EXPOSE 3000
 
-CMD if [ -n "$PROXY_URL" ]; then \
-    export HOSTNAME="0.0.0.0"; \
-    protocol=$(echo $PROXY_URL | cut -d: -f1); \
-    host=$(echo $PROXY_URL | cut -d/ -f3 | cut -d: -f1); \
-    port=$(echo $PROXY_URL | cut -d: -f3); \
-    conf=/etc/proxychains.conf; \
-    echo "strict_chain" > $conf; \
-    echo "proxy_dns" >> $conf; \
-    echo "remote_dns_subnet 224" >> $conf; \
-    echo "tcp_read_time_out 15000" >> $conf; \
-    echo "tcp_connect_time_out 8000" >> $conf; \
-    echo "localnet 127.0.0.0/255.0.0.0" >> $conf; \
-    echo "localnet ::1/128" >> $conf; \
-    echo "[ProxyList]" >> $conf; \
-    echo "$protocol $host $port" >> $conf; \
-    cat /etc/proxychains.conf; \
-    proxychains -f $conf node server.js; \
-    else \
-    node server.js; \
-    fi
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["node", "server.js"]

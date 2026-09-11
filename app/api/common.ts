@@ -8,6 +8,8 @@ const serverConfig = getServerSideConfig();
 
 export async function requestOpenai(req: NextRequest) {
   const controller = new AbortController();
+  const abortUpstream = () => controller.abort();
+  req.signal.addEventListener("abort", abortUpstream, { once: true });
 
   const isAzure = req.nextUrl.pathname.includes("azure/deployments");
 
@@ -183,5 +185,6 @@ export async function requestOpenai(req: NextRequest) {
     });
   } finally {
     clearTimeout(timeoutId);
+    req.signal.removeEventListener("abort", abortUpstream);
   }
 }

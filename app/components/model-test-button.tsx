@@ -4,6 +4,7 @@ import { testModels, ModelTestResult } from "../utils/model-test";
 import { useAccessStore } from "../store";
 import { showToast } from "./ui-lib";
 import Locale from "../locales";
+import { getHeaders } from "../client/api";
 
 // 在组件外部定义一个sleep函数
 function sleep(ms: number): Promise<void> {
@@ -92,9 +93,7 @@ export function ModelTestButton(props: {
             // 发送单个模型的测试请求
             const response = await fetch("/api/model-test", {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
+              headers: getHeaders(),
               body: JSON.stringify({
                 models: [modelId],
                 timeoutSeconds: timeout,
