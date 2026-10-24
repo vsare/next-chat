@@ -1,4 +1,5 @@
 import { getServerSideConfig } from "@/app/config/server";
+import { parseServerEndpoint, providerRequestUrl } from "./upstream";
 import {
   BYTEDANCE_BASE_URL,
   ApiPath,
@@ -45,13 +46,7 @@ async function request(req: NextRequest) {
 
   let baseUrl = serverConfig.bytedanceUrl || BYTEDANCE_BASE_URL;
 
-  if (!baseUrl.startsWith("http")) {
-    baseUrl = `https://${baseUrl}`;
-  }
-
-  if (baseUrl.endsWith("/")) {
-    baseUrl = baseUrl.slice(0, -1);
-  }
+  baseUrl = parseServerEndpoint(baseUrl).href.replace(/\/$/, "");
 
   console.log("[Proxy] ", path);
   console.log("[Base Url]", baseUrl);
@@ -63,7 +58,7 @@ async function request(req: NextRequest) {
     10 * 60 * 1000,
   );
 
-  const fetchUrl = `${baseUrl}${path}`;
+  const fetchUrl = providerRequestUrl(baseUrl, path);
 
   const fetchOptions: RequestInit = {
     headers: {

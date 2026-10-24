@@ -43,7 +43,11 @@ function parseApiKey(bearToken: string) {
   };
 }
 
-export function auth(req: NextRequest, modelProvider: ModelProvider) {
+export function auth(
+  req: NextRequest,
+  modelProvider: ModelProvider,
+  options: { requireAccessCode?: boolean; injectApiKey?: boolean } = {},
+) {
   const authToken = req.headers.get("Authorization") ?? "";
 
   // check if it is openai api key or user token
@@ -57,6 +61,7 @@ export function auth(req: NextRequest, modelProvider: ModelProvider) {
 
   // 这两个处理器始终使用服务端签名/Token；任意自带 Key 不能代替访问码。
   const requiresServerCredentials =
+    options.requireAccessCode ||
     modelProvider === ModelProvider.Ernie ||
     modelProvider === ModelProvider.Hunyuan;
   if (
@@ -76,6 +81,8 @@ export function auth(req: NextRequest, modelProvider: ModelProvider) {
       msg: "you are not allowed to access with your own api key",
     };
   }
+
+  if (options.injectApiKey === false) return { error: false };
 
   // Validate the administrator-selected destination before injecting a key.
   const isAzure = req.nextUrl.pathname.startsWith("/api/azure/");

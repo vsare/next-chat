@@ -1,6 +1,8 @@
 import md5 from "spark-md5";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSideConfig } from "@/app/config/server";
+import { auth } from "../auth";
+import { ModelProvider } from "@/app/constant";
 
 async function handle(req: NextRequest) {
   const serverConfig = getServerSideConfig();
@@ -10,6 +12,11 @@ async function handle(req: NextRequest) {
     Authorization: `Bearer ${serverConfig.cloudflareKVApiKey}`,
   });
   if (req.method === "POST") {
+    const authResult = auth(req, ModelProvider.GPT, {
+      requireAccessCode: true,
+      injectApiKey: false,
+    });
+    if (authResult.error) return NextResponse.json(authResult, { status: 401 });
     const clonedBody = await req.text();
     const hashedCode = md5.hash(clonedBody).trim();
     const body: {
@@ -34,6 +41,7 @@ async function handle(req: NextRequest) {
         "Content-Type": "application/json",
       },
       method: "PUT",
+      redirect: "error",
       body: JSON.stringify([body]),
     });
     const result = await res.json();
@@ -51,9 +59,16 @@ async function handle(req: NextRequest) {
   }
   if (req.method === "GET") {
     const id = req?.nextUrl?.searchParams?.get("id");
+    if (!id || !/^[a-f0-9]{32}$/i.test(id)) {
+      return NextResponse.json(
+        { error: true, msg: "Invalid artifact ID" },
+        { status: 400 },
+      );
+    }
     const res = await fetch(`${storeUrl()}/values/${id}`, {
       headers: storeHeaders(),
       method: "GET",
+      redirect: "error",
     });
     return new Response(res.body, {
       status: res.status,

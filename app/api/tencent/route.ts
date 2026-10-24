@@ -1,4 +1,5 @@
 import { getServerSideConfig } from "@/app/config/server";
+import { parseServerEndpoint } from "@/app/api/upstream";
 import { TENCENT_BASE_URL, ModelProvider } from "@/app/constant";
 import { prettyObject } from "@/app/utils/format";
 import { NextRequest, NextResponse } from "next/server";
@@ -8,7 +9,6 @@ import { getHeader } from "@/app/utils/tencent";
 const serverConfig = getServerSideConfig();
 
 async function handle(req: NextRequest) {
-
   if (req.method === "OPTIONS") {
     return NextResponse.json({ body: "OK" }, { status: 200 });
   }
@@ -58,13 +58,7 @@ async function request(req: NextRequest) {
 
   let baseUrl = serverConfig.tencentUrl || TENCENT_BASE_URL;
 
-  if (!baseUrl.startsWith("http")) {
-    baseUrl = `https://${baseUrl}`;
-  }
-
-  if (baseUrl.endsWith("/")) {
-    baseUrl = baseUrl.slice(0, -1);
-  }
+  baseUrl = parseServerEndpoint(baseUrl).href.replace(/\/$/, "");
 
   console.log("[Base Url]", baseUrl);
 

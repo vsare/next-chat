@@ -103,13 +103,24 @@ async function handle(
     );
   }
 
+  if (
+    resolvedParams.path.some((segment) =>
+      segment.split(/[\\/]/).some((part) => part === "." || part === ".."),
+    )
+  ) {
+    return Response.json(
+      { error: true, msg: "invalid provider path" },
+      { status: 400 },
+    );
+  }
+
   const sizeCheckedRequest = await enforceRequestSize(req);
   if (sizeCheckedRequest instanceof Response) return sizeCheckedRequest;
   req = sizeCheckedRequest;
 
   // 内部 rewrite 保留原始 URL；鉴权和目标构造应使用匹配到的 provider 路径。
   req.nextUrl.pathname = `${apiPath}/${resolvedParams.path
-    .map(encodeURIComponent)
+    .map((segment) => encodeURIComponent(segment).replace(/%3A/gi, ":"))
     .join("/")}`;
 
   console.log(`[${resolvedParams.provider} Route] params `, resolvedParams);

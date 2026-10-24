@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSideConfig } from "../config/server";
 import { OPENAI_BASE_URL, ServiceProvider } from "../constant";
-import { cloudflareAIGatewayUrl } from "../utils/cloudflare";
 import { getModelProvider, isModelAvailableInServer } from "../utils/model";
 import { parseServerEndpoint, providerRequestUrl } from "./upstream";
 
@@ -51,7 +50,16 @@ export async function requestOpenai(req: NextRequest) {
     const azureApiVersion =
       req?.nextUrl?.searchParams?.get("api-version") ||
       serverConfig.azureApiVersion;
-    baseUrl = baseUrl.split("/deployments").shift() as string;
+    const azureBase = parseServerEndpoint(baseUrl);
+    const baseSegments = azureBase.pathname.split("/");
+    const deploymentIndex = baseSegments.lastIndexOf(
+      "deployments",
+      baseSegments.length - 2,
+    );
+    if (deploymentIndex >= 0) {
+      azureBase.pathname = baseSegments.slice(0, deploymentIndex).join("/");
+    }
+    baseUrl = azureBase.href.replace(/\/$/, "");
     path = `${req.nextUrl.pathname.replaceAll(
       "/api/azure/",
       "",
@@ -70,9 +78,19 @@ export async function requestOpenai(req: NextRequest) {
           const [fullName, displayName] = m.split("=");
           const [_, providerName] = getModelProvider(fullName);
           if (providerName === "azure" && !displayName) {
-            const [_, deployId] = (serverConfig?.azureUrl ?? "").split(
-              "deployments/",
+            const configuredSegments = parseServerEndpoint(
+              serverConfig.azureUrl ?? "",
+            )
+              .pathname.replace(/\/$/, "")
+              .split("/");
+            const configuredIndex = configuredSegments.lastIndexOf(
+              "deployments",
+              configuredSegments.length - 2,
             );
+            const deployId =
+              configuredIndex >= 0
+                ? configuredSegments[configuredIndex + 1]
+                : "";
             if (deployId) {
               realDeployName = deployId;
             }
@@ -80,12 +98,14 @@ export async function requestOpenai(req: NextRequest) {
         });
       if (realDeployName) {
         console.log("[Replace with DeployId", realDeployName);
-        path = path.replaceAll(modelName, realDeployName);
+        const segments = path.split("/");
+        segments[1] = realDeployName;
+        path = segments.join("/");
       }
     }
   }
 
-  const fetchUrl = cloudflareAIGatewayUrl(providerRequestUrl(baseUrl, path));
+  const fetchUrl = providerRequestUrl(baseUrl, path);
   console.log("fetchUrl", fetchUrl);
   const fetchOptions: RequestInit = {
     headers: {

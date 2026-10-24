@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSideConfig } from "@/app/config/server";
+import { parseServerEndpoint, providerRequestUrl } from "./upstream";
 import { ModelProvider, STABILITY_BASE_URL } from "@/app/constant";
 import { auth } from "@/app/api/auth";
 
@@ -19,13 +20,7 @@ export async function handle(
 
   let baseUrl = serverConfig.stabilityUrl || STABILITY_BASE_URL;
 
-  if (!baseUrl.startsWith("http")) {
-    baseUrl = `https://${baseUrl}`;
-  }
-
-  if (baseUrl.endsWith("/")) {
-    baseUrl = baseUrl.slice(0, -1);
-  }
+  baseUrl = parseServerEndpoint(baseUrl).href.replace(/\/$/, "");
 
   let path = `${req.nextUrl.pathname}`.replaceAll("/api/stability/", "");
 
@@ -64,7 +59,7 @@ export async function handle(
     );
   }
 
-  const fetchUrl = `${baseUrl}/${path}`;
+  const fetchUrl = providerRequestUrl(baseUrl, path);
   console.log("[Stability Url] ", fetchUrl);
   const fetchOptions: RequestInit = {
     headers: {

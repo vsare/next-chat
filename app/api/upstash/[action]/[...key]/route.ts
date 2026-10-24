@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { providerRequestUrl } from "../../../upstream";
 
 async function handle(
   req: NextRequest,
@@ -22,6 +23,11 @@ async function handle(
   if (
     !endpointUrl ||
     endpointUrl.protocol !== "https:" ||
+    endpointUrl.username ||
+    endpointUrl.password ||
+    endpointUrl.search ||
+    endpointUrl.hash ||
+    resolvedParams.key.some((key) => key === "." || key === "..") ||
     (endpointUrl.port !== "" && endpointUrl.port !== "443") ||
     !endpointUrl.hostname.endsWith(".upstash.io")
   ) {
@@ -50,9 +56,10 @@ async function handle(
     );
   }
 
-  const targetUrl = `${endpoint}/${
-    resolvedParams.action
-  }/${resolvedParams.key.join("/")}`;
+  const targetUrl = providerRequestUrl(
+    `${endpointUrl.href.replace(/\/$/, "")}/${resolvedParams.action}`,
+    resolvedParams.key.map(encodeURIComponent).join("/"),
+  );
 
   const method = req.method;
   const shouldNotHaveBody = ["get", "head"].includes(
@@ -70,7 +77,6 @@ async function handle(
     duplex: "half",
   };
 
-  console.log("[Upstash Proxy]", targetUrl, fetchOptions);
   const fetchResult = await fetch(targetUrl, fetchOptions);
 
   console.log("[Any Proxy]", targetUrl, {

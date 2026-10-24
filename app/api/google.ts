@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "./auth";
 import { getServerSideConfig } from "@/app/config/server";
+import { parseServerEndpoint, providerRequestUrl } from "./upstream";
 import { ApiPath, GEMINI_BASE_URL, ModelProvider } from "@/app/constant";
 import { prettyObject } from "@/app/utils/format";
 
@@ -81,13 +82,7 @@ async function request(req: NextRequest, apiKey: string) {
   // 检查是否为图像生成请求
   const isImageGenerationRequest = path.includes(GEMINI_IMAGE_GENERATION_MODEL);
 
-  if (!baseUrl.startsWith("http")) {
-    baseUrl = `https://${baseUrl}`;
-  }
-
-  if (baseUrl.endsWith("/")) {
-    baseUrl = baseUrl.slice(0, -1);
-  }
+  baseUrl = parseServerEndpoint(baseUrl).href.replace(/\/$/, "");
 
   console.log("[Proxy] ", path);
   console.log("[Base Url]", baseUrl);
@@ -100,7 +95,7 @@ async function request(req: NextRequest, apiKey: string) {
   );
 
   // 构建请求 URL，处理图像生成的特殊参数
-  let fetchUrl = `${baseUrl}${path}`;
+  let fetchUrl = providerRequestUrl(baseUrl, path);
   if (req?.nextUrl?.searchParams?.get("alt") === "sse") {
     fetchUrl += "?alt=sse";
   }

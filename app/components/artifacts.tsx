@@ -18,7 +18,8 @@ import ReloadButtonIcon from "../icons/reload.svg";
 import Locale from "../locales";
 import { Modal, showToast } from "./ui-lib";
 import { copyToClipboard, downloadAs } from "../utils";
-import { Path, ApiPath, REPO_URL } from "@/app/constant";
+import { Path, ApiPath, REPO_URL, ACCESS_CODE_PREFIX } from "@/app/constant";
+import { useAccessStore } from "../store/access";
 import { Loading } from "./home";
 import styles from "./artifacts.module.scss";
 
@@ -129,6 +130,11 @@ export function ArtifactsShareButton({
       ? Promise.resolve({ id })
       : fetch(ApiPath.Artifacts, {
           method: "POST",
+          headers: {
+            Authorization: `Bearer ${ACCESS_CODE_PREFIX}${
+              useAccessStore.getState().accessCode
+            }`,
+          },
           body: code,
         })
           .then((res) => res.json())

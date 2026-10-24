@@ -1,4 +1,5 @@
 import { getServerSideConfig } from "@/app/config/server";
+import { parseServerEndpoint, providerRequestUrl } from "./upstream";
 import {
   ANTHROPIC_BASE_URL,
   Anthropic,
@@ -10,7 +11,6 @@ import { prettyObject } from "@/app/utils/format";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "./auth";
 import { isModelAvailableInServer } from "@/app/utils/model";
-import { cloudflareAIGatewayUrl } from "@/app/utils/cloudflare";
 
 const ALLOWD_PATH = new Set([Anthropic.ChatPath, Anthropic.ChatPath1]);
 
@@ -72,13 +72,7 @@ async function request(req: NextRequest) {
   let baseUrl =
     serverConfig.anthropicUrl || serverConfig.baseUrl || ANTHROPIC_BASE_URL;
 
-  if (!baseUrl.startsWith("http")) {
-    baseUrl = `https://${baseUrl}`;
-  }
-
-  if (baseUrl.endsWith("/")) {
-    baseUrl = baseUrl.slice(0, -1);
-  }
+  baseUrl = parseServerEndpoint(baseUrl).href.replace(/\/$/, "");
 
   console.log("[Proxy] ", path);
   console.log("[Base Url]", baseUrl);
@@ -91,7 +85,7 @@ async function request(req: NextRequest) {
   );
 
   // try rebuild url, when using cloudflare ai gateway in server
-  const fetchUrl = cloudflareAIGatewayUrl(`${baseUrl}${path}`);
+  const fetchUrl = providerRequestUrl(baseUrl, path);
 
   const fetchOptions: RequestInit = {
     headers: {

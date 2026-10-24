@@ -12,9 +12,12 @@ export async function getAccessToken(
   error?: number;
 }> {
   const res = await fetch(
-    `${BAIDU_OATUH_URL}?grant_type=client_credentials&client_id=${clientId}&client_secret=${clientSecret}`,
+    `${BAIDU_OATUH_URL}?grant_type=client_credentials&client_id=${encodeURIComponent(
+      clientId,
+    )}&client_secret=${encodeURIComponent(clientSecret)}`,
     {
       method: "POST",
+      redirect: "error",
       mode: "cors",
     },
   );

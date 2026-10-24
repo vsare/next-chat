@@ -1,4 +1,5 @@
 import { getServerSideConfig } from "@/app/config/server";
+import { parseServerEndpoint, providerRequestUrl } from "./upstream";
 import {
   BAIDU_BASE_URL,
   ApiPath,
@@ -58,13 +59,7 @@ async function request(req: NextRequest) {
 
   let baseUrl = serverConfig.baiduUrl || BAIDU_BASE_URL;
 
-  if (!baseUrl.startsWith("http")) {
-    baseUrl = `https://${baseUrl}`;
-  }
-
-  if (baseUrl.endsWith("/")) {
-    baseUrl = baseUrl.slice(0, -1);
-  }
+  baseUrl = parseServerEndpoint(baseUrl).href.replace(/\/$/, "");
 
   console.log("[Proxy] ", path);
   console.log("[Base Url]", baseUrl);
@@ -80,7 +75,10 @@ async function request(req: NextRequest) {
     serverConfig.baiduApiKey as string,
     serverConfig.baiduSecretKey as string,
   );
-  const fetchUrl = `${baseUrl}${path}?access_token=${access_token}`;
+  const fetchUrl = `${providerRequestUrl(
+    baseUrl,
+    path,
+  )}?access_token=${encodeURIComponent(access_token)}`;
 
   const fetchOptions: RequestInit = {
     headers: {

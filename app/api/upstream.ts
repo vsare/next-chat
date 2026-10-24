@@ -1,3 +1,5 @@
+import { cloudflareAIGatewayUrl } from "../utils/cloudflare";
+
 // 仅用于服务端可信配置。请求头、查询参数不能扩充目标允许范围。
 export function parseServerEndpoint(value: string) {
   const input = value.trim();
@@ -27,7 +29,9 @@ export function parseServerEndpoint(value: string) {
 
 export function providerRequestUrl(endpoint: string, path: string) {
   const base = parseServerEndpoint(endpoint);
-  const target = new URL(`${base.href.replace(/\/$/, "")}/${path}`);
+  const target = new URL(
+    `${base.href.replace(/\/$/, "")}/${path.replace(/^\/+/, "")}`,
+  );
   if (
     target.origin !== base.origin ||
     target.username ||
@@ -36,5 +40,24 @@ export function providerRequestUrl(endpoint: string, path: string) {
   ) {
     throw new Error("Request escapes configured provider endpoint");
   }
-  return target.href;
+  const finalTarget = new URL(cloudflareAIGatewayUrl(target.href));
+  // Gateway 转换可调整 provider 内部路径，但不能改变 origin、account 或 gateway。
+  const gatewayParts = base.pathname.split("/");
+  const isGateway =
+    base.protocol === "https:" &&
+    base.hostname === "gateway.ai.cloudflare.com" &&
+    !base.port &&
+    gatewayParts[1] === "v1";
+  const prefix = isGateway
+    ? gatewayParts
+        .slice(0, gatewayParts[4] === "azure-openai" ? 6 : 5)
+        .join("/")
+    : base.pathname.replace(/\/$/, "");
+  if (
+    finalTarget.origin !== base.origin ||
+    !finalTarget.pathname.startsWith(`${prefix}/`)
+  ) {
+    throw new Error("Converted request escapes configured provider endpoint");
+  }
+  return finalTarget.href;
 }
