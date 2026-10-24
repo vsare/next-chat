@@ -3,6 +3,7 @@ import { getServerSideConfig } from "../config/server";
 import { OPENAI_BASE_URL, ServiceProvider } from "../constant";
 import { cloudflareAIGatewayUrl } from "../utils/cloudflare";
 import { getModelProvider, isModelAvailableInServer } from "../utils/model";
+import { parseServerEndpoint, providerRequestUrl } from "./upstream";
 
 const serverConfig = getServerSideConfig();
 
@@ -11,7 +12,7 @@ export async function requestOpenai(req: NextRequest) {
   const abortUpstream = () => controller.abort();
   req.signal.addEventListener("abort", abortUpstream, { once: true });
 
-  const isAzure = req.nextUrl.pathname.includes("azure/deployments");
+  const isAzure = req.nextUrl.pathname.startsWith("/api/azure/");
 
   var authValue,
     authHeaderName = "";
@@ -34,13 +35,7 @@ export async function requestOpenai(req: NextRequest) {
   let baseUrl =
     (isAzure ? serverConfig.azureUrl : serverConfig.baseUrl) || OPENAI_BASE_URL;
 
-  if (!baseUrl.startsWith("http")) {
-    baseUrl = `https://${baseUrl}`;
-  }
-
-  if (baseUrl.endsWith("/")) {
-    baseUrl = baseUrl.slice(0, -1);
-  }
+  baseUrl = parseServerEndpoint(baseUrl).href.replace(/\/$/, "");
 
   console.log("[Proxy] ", path);
   console.log("[Base Url]", baseUrl);
@@ -60,7 +55,7 @@ export async function requestOpenai(req: NextRequest) {
     path = `${req.nextUrl.pathname.replaceAll(
       "/api/azure/",
       "",
-    )}?api-version=${azureApiVersion}`;
+    )}?api-version=${encodeURIComponent(azureApiVersion ?? "")}`;
 
     // Forward compatibility:
     // if display_name(deployment_name) not set, and '{deploy-id}' in AZURE_URL
@@ -90,7 +85,7 @@ export async function requestOpenai(req: NextRequest) {
     }
   }
 
-  const fetchUrl = cloudflareAIGatewayUrl(`${baseUrl}/${path}`);
+  const fetchUrl = cloudflareAIGatewayUrl(providerRequestUrl(baseUrl, path));
   console.log("fetchUrl", fetchUrl);
   const fetchOptions: RequestInit = {
     headers: {

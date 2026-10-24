@@ -4,6 +4,7 @@ import { ModelTestResult } from "@/app/utils/model-test";
 import { auth } from "@/app/api/auth";
 import { ModelProvider } from "@/app/constant";
 import { getModelTestApiKey } from "./auth";
+import { providerRequestUrl } from "../upstream";
 
 const MAX_MODELS_PER_REQUEST = 20;
 const MIN_TIMEOUT_SECONDS = 1;
@@ -22,7 +23,7 @@ async function testModel(
 
   try {
     // 构建请求URL
-    const url = `${baseUrl}/v1/chat/completions`;
+    const url = providerRequestUrl(baseUrl, "v1/chat/completions");
 
     // 构建请求体
     const requestBody = {
@@ -45,6 +46,7 @@ async function testModel(
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(requestBody),
+      redirect: "error",
       signal: controller.signal,
     });
 

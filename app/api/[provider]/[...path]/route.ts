@@ -107,6 +107,11 @@ async function handle(
   if (sizeCheckedRequest instanceof Response) return sizeCheckedRequest;
   req = sizeCheckedRequest;
 
+  // 内部 rewrite 保留原始 URL；鉴权和目标构造应使用匹配到的 provider 路径。
+  req.nextUrl.pathname = `${apiPath}/${resolvedParams.path
+    .map(encodeURIComponent)
+    .join("/")}`;
+
   console.log(`[${resolvedParams.provider} Route] params `, resolvedParams);
   switch (apiPath) {
     case ApiPath.Azure:

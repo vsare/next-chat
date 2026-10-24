@@ -72,20 +72,19 @@ if (mode !== "export") {
         // https://{resource_name}.openai.azure.com/openai/deployments/{deploy_name}/chat/completions
         source:
           "/api/proxy/azure/:resource_name/deployments/:deploy_name/:path*",
-        destination:
-          "https://:resource_name.openai.azure.com/openai/deployments/:deploy_name/:path*",
+        destination: "/api/azure/deployments/:deploy_name/:path*",
       },
       {
         source: "/api/proxy/google/:path*",
-        destination: "https://generativelanguage.googleapis.com/:path*",
+        destination: "/api/google/:path*",
       },
       {
         source: "/api/proxy/openai/:path*",
-        destination: "https://api.openai.com/:path*",
+        destination: "/api/openai/:path*",
       },
       {
         source: "/api/proxy/anthropic/:path*",
-        destination: "https://api.anthropic.com/:path*",
+        destination: "/api/anthropic/:path*",
       },
       {
         source: "/google-fonts/:path*",
@@ -97,7 +96,7 @@ if (mode !== "export") {
       },
       {
         source: "/api/proxy/alibaba/:path*",
-        destination: "https://dashscope.aliyuncs.com/api/:path*",
+        destination: "/api/alibaba/:path*",
       },
     ];
 
